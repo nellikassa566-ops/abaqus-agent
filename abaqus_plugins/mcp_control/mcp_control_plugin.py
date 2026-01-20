@@ -7,26 +7,15 @@ from abaqusGui import *
 from abaqusConstants import ALL
 import os
 
-class MCPStopButton(AFXForm):
-    def __init__(self, owner):
-        AFXForm.__init__(self, owner)
-        self.cmd = AFXGuiCommand(mode=self, method='mcp_stop', objectName='')
-
-class MCPStartButton(AFXForm):
-    def __init__(self, owner):
-        AFXForm.__init__(self, owner)
-        self.cmd = AFXGuiCommand(mode=self, method='mcp_start', objectName='')
-
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-# Register Start MCP button
-toolset.registerGuiMenuButton(
+# Register Start MCP button using kernel command
+toolset.registerKernelMenuButton(
     buttonText='MCP|Start MCP',
-    object=MCPStartButton(toolset),
-    messageId=AFXMode.ID_ACTIVATE,
+    moduleName='__main__',
+    functionName='mcp_start()',
     icon=None,
-    kernelInitString='',
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
@@ -34,13 +23,12 @@ toolset.registerGuiMenuButton(
     helpUrl=''
 )
 
-# Register Stop MCP button
-toolset.registerGuiMenuButton(
+# Register Stop MCP button using kernel command
+toolset.registerKernelMenuButton(
     buttonText='MCP|Stop MCP',
-    object=MCPStopButton(toolset),
-    messageId=AFXMode.ID_ACTIVATE,
+    moduleName='__main__',
+    functionName='mcp_stop()',
     icon=None,
-    kernelInitString='',
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
