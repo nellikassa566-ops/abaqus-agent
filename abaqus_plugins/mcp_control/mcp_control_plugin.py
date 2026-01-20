@@ -7,15 +7,38 @@ from abaqusGui import *
 from abaqusConstants import ALL
 import os
 
+
+class MCPStartForm(AFXForm):
+    """Form to start MCP loop"""
+    def __init__(self, owner):
+        AFXForm.__init__(self, owner)
+        
+    def activate(self):
+        # Send command directly to kernel like user typing
+        sendCommand('mcp_loop()')
+        return True
+
+
+class MCPStopForm(AFXForm):
+    """Form to stop MCP loop"""
+    def __init__(self, owner):
+        AFXForm.__init__(self, owner)
+        
+    def activate(self):
+        sendCommand('mcp_stop()')
+        return True
+
+
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-# Register Start MCP button - use mcp_loop directly for stop button support
-toolset.registerKernelMenuButton(
+# Register Start MCP button
+toolset.registerGuiMenuButton(
     buttonText='MCP|Start MCP',
-    moduleName='__main__',
-    functionName='mcp_loop()',
+    object=MCPStartForm(toolset),
+    messageId=AFXMode.ID_ACTIVATE,
     icon=None,
+    kernelInitString='',
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
@@ -24,11 +47,12 @@ toolset.registerKernelMenuButton(
 )
 
 # Register Stop MCP button
-toolset.registerKernelMenuButton(
+toolset.registerGuiMenuButton(
     buttonText='MCP|Stop MCP',
-    moduleName='__main__',
-    functionName='mcp_stop()',
+    object=MCPStopForm(toolset),
+    messageId=AFXMode.ID_ACTIVATE,
     icon=None,
+    kernelInitString='',
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
