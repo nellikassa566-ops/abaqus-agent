@@ -8,6 +8,7 @@ A plugin that enables communication between Abaqus CAE and external programs via
 - Get model information (models, parts, materials, steps)
 - Simple file-based communication (no socket dependencies)
 - Easy to integrate with AI assistants or automation tools
+- GUI menu for easy control (Plug-ins → MCP → Stop MCP)
 
 ## Installation
 
@@ -24,6 +25,16 @@ A plugin that enables communication between Abaqus CAE and external programs via
    ```bash
    # Linux/Mac
    cp ~/.abaqus-mcp/abaqus_v6.env.example ~/abaqus_v6.env
+   ```
+
+3. (Optional) Install GUI plugin - copy the plugin folder:
+   ```powershell
+   # Windows
+   Copy-Item -Recurse "$env:USERPROFILE\.abaqus-mcp\abaqus_plugins\mcp_control" "$env:USERPROFILE\abaqus_plugins\mcp_control"
+   ```
+   ```bash
+   # Linux/Mac
+   cp -r ~/.abaqus-mcp/abaqus_plugins/mcp_control ~/abaqus_plugins/mcp_control
    ```
 
 ## Usage
@@ -46,12 +57,20 @@ mcp_loop()  # Start continuous command processing
 
 ### Stop the Plugin
 
-Option 1: Run in PowerShell:
+**Option 1: GUI Menu (if installed GUI plugin)**
+- Click `Plug-ins` → `MCP` → `Stop MCP`
+
+**Option 2: Command line**
+```python
+mcp_stop()
+```
+
+**Option 3: PowerShell**
 ```powershell
 echo $null > "$env:USERPROFILE\.abaqus-mcp\stop.flag"
 ```
 
-Option 2: Run `stop_mcp.py` in any Python environment
+**Option 4: Run stop_mcp.py**
 
 ### Send Commands
 
@@ -89,14 +108,18 @@ Results will be written to `~/.abaqus-mcp/results/my_command.json`
 
 ```
 ~/.abaqus-mcp/
-├── abaqus_mcp_plugin.py    # Main plugin
-├── stop_mcp.py             # Stop utility
-├── abaqus_v6.env.example   # Auto-load config template
-├── commands/               # Input: command JSON files
-├── results/                # Output: result JSON files
-├── scripts/                # Temporary script files
-├── status.json             # Runtime status (auto-generated)
-└── stop.flag               # Stop signal file
+├── abaqus_mcp_plugin.py           # Main plugin
+├── stop_mcp.py                    # Stop utility
+├── abaqus_v6.env.example          # Auto-load config template
+├── abaqus_plugins/
+│   └── mcp_control/               # GUI plugin
+│       ├── __init__.py
+│       └── mcp_control_plugin.py
+├── commands/                      # Input: command JSON files
+├── results/                       # Output: result JSON files
+├── scripts/                       # Temporary script files
+├── status.json                    # Runtime status (auto-generated)
+└── stop.flag                      # Stop signal file
 ```
 
 ## License
