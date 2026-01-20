@@ -8,6 +8,7 @@ A plugin that enables communication between Abaqus CAE and external programs via
 - Get model information (models, parts, materials, steps)
 - Simple file-based communication (no socket dependencies)
 - Easy to integrate with AI assistants or automation tools
+- **Non-blocking background mode** - GUI remains responsive
 - GUI menu for easy control
 
 ## Installation
@@ -41,40 +42,39 @@ A plugin that enables communication between Abaqus CAE and external programs via
 
 ### Start MCP
 
-There are two ways to start MCP, each with different stop methods:
-
-| Start Method | Stop Button | How to Stop |
-|-------------|-------------|-------------|
-| Command line: `mcp_loop()` | ✅ Yes | Click Stop button (bottom-left) |
-| Menu: Plug-ins → MCP → Start MCP | ❌ No | Use Stop MCP menu or stop_mcp.py |
-
-**Recommended: Command line**
+**Recommended: Background Mode (Non-blocking)**
 ```python
-mcp_loop()  # Start - Stop button will appear at bottom-left
+mcp_start()  # GUI remains responsive
 ```
+Or use menu: `Plug-ins` → `MCP` → `Start MCP (Background)`
 
-**Alternative: GUI Menu**
-- Click `Plug-ins` → `MCP` → `Start MCP`
+**Alternative: Blocking Mode (has Stop button)**
+```python
+mcp_loop()  # GUI is blocked, but has Stop button
+```
+Or use menu: `Plug-ins` → `MCP` → `Start MCP (Blocking)`
+
+| Mode | GUI Responsive | Stop Button | Stop Method |
+|------|---------------|-------------|-------------|
+| Background (`mcp_start()`) | ✅ Yes | ❌ No | `mcp_stop()` or menu |
+| Blocking (`mcp_loop()`) | ❌ No | ✅ Yes | Click Stop button |
 
 ### Stop MCP
 
-**Option 1: Stop button (only when started via command line)**
-- Click the `Stop` button at the bottom-left of Abaqus window
-
-**Option 2: GUI Menu**
+**Option 1: GUI Menu**
 - Click `Plug-ins` → `MCP` → `Stop MCP`
 
-**Option 3: Command line**
+**Option 2: Command line**
 ```python
 mcp_stop()
 ```
 
-**Option 4: PowerShell**
+**Option 3: PowerShell**
 ```powershell
 echo $null > "$env:USERPROFILE\.abaqus-mcp\stop.flag"
 ```
 
-**Option 5: Run stop_mcp.py**
+**Option 4: Run stop_mcp.py**
 
 ### Send Commands
 
