@@ -15,7 +15,7 @@ class MCPStopButton(AFXForm):
 class MCPStartButton(AFXForm):
     def __init__(self, owner):
         AFXForm.__init__(self, owner)
-        self.cmd = AFXGuiCommand(mode=self, method='mcp_loop', objectName='')
+        self.cmd = AFXGuiCommand(mode=self, method='mcp_start', objectName='')
 
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
@@ -30,7 +30,7 @@ toolset.registerGuiMenuButton(
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
-    description='Start the MCP loop',
+    description='Start the MCP loop (non-blocking)',
     helpUrl=''
 )
 
