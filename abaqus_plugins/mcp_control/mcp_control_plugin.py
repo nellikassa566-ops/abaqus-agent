@@ -10,20 +10,20 @@ import os
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-# Register Start MCP button using kernel command
+# Register Start MCP button - use mcp_loop directly for stop button support
 toolset.registerKernelMenuButton(
     buttonText='MCP|Start MCP',
     moduleName='__main__',
-    functionName='mcp_start()',
+    functionName='mcp_loop()',
     icon=None,
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
-    description='Start the MCP loop (non-blocking)',
+    description='Start the MCP loop',
     helpUrl=''
 )
 
-# Register Stop MCP button using kernel command
+# Register Stop MCP button
 toolset.registerKernelMenuButton(
     buttonText='MCP|Stop MCP',
     moduleName='__main__',
