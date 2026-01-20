@@ -20,7 +20,21 @@ class MCPStartButton(AFXForm):
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-# Register MCP control commands in Plug-ins menu
+# Register Start MCP button
+toolset.registerGuiMenuButton(
+    buttonText='MCP|Start MCP',
+    object=MCPStartButton(toolset),
+    messageId=AFXMode.ID_ACTIVATE,
+    icon=None,
+    kernelInitString='',
+    applicableModules=ALL,
+    version='1.0',
+    author='MCP Plugin',
+    description='Start the MCP loop',
+    helpUrl=''
+)
+
+# Register Stop MCP button
 toolset.registerGuiMenuButton(
     buttonText='MCP|Stop MCP',
     object=MCPStopButton(toolset),
