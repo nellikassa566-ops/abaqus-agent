@@ -14,8 +14,8 @@ class MCPStartForm(AFXForm):
         AFXForm.__init__(self, owner)
         
     def activate(self):
-        # Send command directly to kernel like user typing
-        sendCommand('mcp_loop()')
+        # Import from __main__ where mcp_loop is defined
+        sendCommand('import __main__; __main__.mcp_loop()')
         return True
 
 
@@ -25,7 +25,7 @@ class MCPStopForm(AFXForm):
         AFXForm.__init__(self, owner)
         
     def activate(self):
-        sendCommand('mcp_stop()')
+        sendCommand('import __main__; __main__.mcp_stop()')
         return True
 
 
