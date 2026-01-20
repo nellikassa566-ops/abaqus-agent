@@ -8,7 +8,7 @@ A plugin that enables communication between Abaqus CAE and external programs via
 - Get model information (models, parts, materials, steps)
 - Simple file-based communication (no socket dependencies)
 - Easy to integrate with AI assistants or automation tools
-- GUI menu for easy control (Plug-ins → MCP → Stop MCP)
+- GUI menu for easy control
 
 ## Installation
 
@@ -39,38 +39,42 @@ A plugin that enables communication between Abaqus CAE and external programs via
 
 ## Usage
 
-### Start the Plugin in Abaqus
+### Start MCP
 
-**Option 1: Auto-load (if installed abaqus_v6.env)**
-- Just start Abaqus/CAE, the plugin loads automatically
+There are two ways to start MCP, each with different stop methods:
 
-**Option 2: Manual load**
-1. Open Abaqus/CAE
-2. Go to `File` → `Run Script...`
-3. Select `abaqus_mcp_plugin.py`
+| Start Method | Stop Button | How to Stop |
+|-------------|-------------|-------------|
+| Command line: `mcp_loop()` | ✅ Yes | Click Stop button (bottom-left) |
+| Menu: Plug-ins → MCP → Start MCP | ❌ No | Use Stop MCP menu or stop_mcp.py |
 
-Then in the Abaqus command line, run:
-
+**Recommended: Command line**
 ```python
-mcp_loop()  # Start continuous command processing
+mcp_loop()  # Start - Stop button will appear at bottom-left
 ```
 
-### Stop the Plugin
+**Alternative: GUI Menu**
+- Click `Plug-ins` → `MCP` → `Start MCP`
 
-**Option 1: GUI Menu (if installed GUI plugin)**
+### Stop MCP
+
+**Option 1: Stop button (only when started via command line)**
+- Click the `Stop` button at the bottom-left of Abaqus window
+
+**Option 2: GUI Menu**
 - Click `Plug-ins` → `MCP` → `Stop MCP`
 
-**Option 2: Command line**
+**Option 3: Command line**
 ```python
 mcp_stop()
 ```
 
-**Option 3: PowerShell**
+**Option 4: PowerShell**
 ```powershell
 echo $null > "$env:USERPROFILE\.abaqus-mcp\stop.flag"
 ```
 
-**Option 4: Run stop_mcp.py**
+**Option 5: Run stop_mcp.py**
 
 ### Send Commands
 
