@@ -11,17 +11,34 @@ A plugin that enables communication between Abaqus CAE and external programs via
 
 ## Installation
 
-1. Clone or download this repository
-2. The plugin uses `~/.abaqus-mcp` as the working directory (automatically created)
+1. Clone or download this repository to `~/.abaqus-mcp`:
+   ```bash
+   git clone https://github.com/Cai-aa/.abaqus-mcp.git ~/.abaqus-mcp
+   ```
+
+2. (Optional) Auto-load on startup - copy the env file to your home directory:
+   ```powershell
+   # Windows
+   copy "$env:USERPROFILE\.abaqus-mcp\abaqus_v6.env.example" "$env:USERPROFILE\abaqus_v6.env"
+   ```
+   ```bash
+   # Linux/Mac
+   cp ~/.abaqus-mcp/abaqus_v6.env.example ~/abaqus_v6.env
+   ```
 
 ## Usage
 
 ### Start the Plugin in Abaqus
 
+**Option 1: Auto-load (if installed abaqus_v6.env)**
+- Just start Abaqus/CAE, the plugin loads automatically
+
+**Option 2: Manual load**
 1. Open Abaqus/CAE
 2. Go to `File` → `Run Script...`
 3. Select `abaqus_mcp_plugin.py`
-4. In the Abaqus command line, run:
+
+Then in the Abaqus command line, run:
 
 ```python
 mcp_loop()  # Start continuous command processing
@@ -72,11 +89,14 @@ Results will be written to `~/.abaqus-mcp/results/my_command.json`
 
 ```
 ~/.abaqus-mcp/
-├── commands/     # Input: command JSON files
-├── results/      # Output: result JSON files
-├── scripts/      # Temporary script files
-├── status.json   # Runtime status (auto-generated)
-└── stop.flag     # Stop signal file
+├── abaqus_mcp_plugin.py    # Main plugin
+├── stop_mcp.py             # Stop utility
+├── abaqus_v6.env.example   # Auto-load config template
+├── commands/               # Input: command JSON files
+├── results/                # Output: result JSON files
+├── scripts/                # Temporary script files
+├── status.json             # Runtime status (auto-generated)
+└── stop.flag               # Stop signal file
 ```
 
 ## License
