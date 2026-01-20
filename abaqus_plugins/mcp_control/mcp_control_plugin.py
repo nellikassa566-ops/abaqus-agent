@@ -9,16 +9,29 @@ from abaqusConstants import ALL
 # Get the plugin toolset
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
-# Register Start MCP button - directly call mcp_loop()
+# Register Start MCP button - use mcp_start() for non-blocking
 toolset.registerKernelMenuButton(
-    buttonText='MCP|Start MCP',
+    buttonText='MCP|Start MCP (Background)',
+    moduleName='__main__',
+    functionName='mcp_start()',
+    icon=None,
+    applicableModules=ALL,
+    version='1.0',
+    author='MCP Plugin',
+    description='Start MCP in background thread (non-blocking)',
+    helpUrl=''
+)
+
+# Register blocking mode option
+toolset.registerKernelMenuButton(
+    buttonText='MCP|Start MCP (Blocking)',
     moduleName='__main__',
     functionName='mcp_loop()',
     icon=None,
     applicableModules=ALL,
     version='1.0',
     author='MCP Plugin',
-    description='Start the MCP loop (use Stop button at bottom-left to stop)',
+    description='Start MCP in blocking mode (has Stop button)',
     helpUrl=''
 )
 

@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-Abaqus MCP Plugin v3.1 - 文件 IPC 版本
+Abaqus MCP Plugin v3.2 - 文件 IPC 版本
 
 使用文件进行进程间通信，最可靠的方案。
 
 使用方法：
 1. File -> Run Script... -> 选择此文件
-2. 运行 mcp_loop() 持续处理命令
-3. 运行 mcp_stop() 停止循环（或在另一个终端运行 stop_mcp.py）
+2. 运行 mcp_start() 启动非阻塞模式（推荐）
+3. 运行 mcp_loop() 启动阻塞模式（有 Stop 按钮）
+4. 运行 mcp_stop() 停止
 """
 
 import os
 import json
 import time
 import traceback
+import threading
 from datetime import datetime
 
 # 尝试导入 Abaqus 模块
@@ -211,46 +213,40 @@ def mcp_stop():
 
 # 全局变量用于非阻塞模式
 _mcp_running = False
+_mcp_thread = None
 
 
-def _mcp_tick():
-    """内部函数：非阻塞轮询一次"""
+def _mcp_thread_loop():
+    """后台线程中运行的轮询循环"""
     global _mcp_running
     
-    if not _mcp_running:
-        write_status("stopped", "Polling stopped")
-        print("MCP: Loop ended")
-        return
+    while _mcp_running:
+        # 检查停止标志
+        if os.path.exists(STOP_FILE):
+            try:
+                os.remove(STOP_FILE)
+            except:
+                pass
+            _mcp_running = False
+            print("MCP: Stopped by stop.flag")
+            break
+        
+        # 处理命令
+        poll_once()
+        time.sleep(0.1)  # 100ms 轮询间隔
     
-    # 检查停止标志
-    if os.path.exists(STOP_FILE):
-        try:
-            os.remove(STOP_FILE)
-        except:
-            pass
-        _mcp_running = False
-        write_status("stopped", "Polling stopped")
-        print("MCP: Stopped by stop.flag")
-        return
-    
-    # 处理命令
-    poll_once()
-    
-    # 安排下一次轮询
-    try:
-        from abaqusGui import getAFXApp
-        getAFXApp().afterTime(100, _mcp_tick)  # 100ms 后再次调用
-    except:
-        pass
+    write_status("stopped", "Polling stopped")
+    print("MCP: Background loop ended")
 
 
 def mcp_start():
     """
-    非阻塞方式启动 MCP 轮询（推荐用于 GUI 按钮）
+    非阻塞方式启动 MCP 轮询（使用后台线程）
     
     不会阻塞 Abaqus GUI，可以正常使用界面
+    使用 mcp_stop() 或 Plug-ins -> MCP -> Stop MCP 停止
     """
-    global _mcp_running
+    global _mcp_running, _mcp_thread
     
     if _mcp_running:
         print("MCP: Already running")
@@ -261,18 +257,14 @@ def mcp_start():
         os.remove(STOP_FILE)
     
     _mcp_running = True
-    print("MCP: Starting in non-blocking mode...")
-    print("MCP: Use Plug-ins -> MCP -> Stop MCP to stop")
-    write_status("running", "Polling active (non-blocking)")
+    print("MCP: Starting in background thread...")
+    print("MCP: Use mcp_stop() or Plug-ins -> MCP -> Stop MCP to stop")
+    print("MCP: Abaqus GUI remains responsive!")
+    write_status("running", "Polling active (background thread)")
     
-    # 使用 Abaqus GUI 定时器
-    try:
-        from abaqusGui import getAFXApp
-        getAFXApp().afterTime(100, _mcp_tick)  # 100ms 后开始轮询
-    except Exception as e:
-        print("MCP: GUI timer not available, falling back to blocking mode")
-        _mcp_running = False
-        mcp_loop()
+    # 启动后台线程
+    _mcp_thread = threading.Thread(target=_mcp_thread_loop, daemon=True)
+    _mcp_thread.start()
 
 
 def mcp_loop():
