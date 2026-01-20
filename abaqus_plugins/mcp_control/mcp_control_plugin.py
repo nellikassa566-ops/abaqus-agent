@@ -49,11 +49,13 @@ class MCPStartForm(AFXForm):
         global _mcp_timer_running
         
         if _mcp_timer_running:
-            showAFXInfoDialog(getAFXApp().getAFXMainWindow(), 'MCP is already running.\n\nUse Plug-ins -> MCP -> Stop MCP to stop.')
+            # Use simple print instead of dialog
+            sendCommand('print("MCP: Already running. Use Plug-ins -> MCP -> Stop MCP to stop.")')
             return True
         
         # Initialize on kernel side
         sendCommand('import __main__')
+        sendCommand('import os')
         sendCommand('if hasattr(__main__, "STOP_FILE") and os.path.exists(__main__.STOP_FILE): os.remove(__main__.STOP_FILE)')
         sendCommand('print("MCP: Listening for commands (non-blocking)...")')
         sendCommand('print("MCP: Use Plug-ins -> MCP -> Stop MCP to stop")')
