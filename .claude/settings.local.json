@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m json.tool)",
+      "Bash(python -c \"import mcp; print\\(mcp.__version__\\)\")",
+      "Bash(python -m pip show mcp)",
+      "Bash(python -c \"import json, sys, os; print\\('ok'\\)\")",
+      "Bash(python -c \"import mcp_server; print\\('import OK'\\)\")",
+      "Bash(python -c ':*)",
+      "Bash(python -c \" import psutil pid = 31096 try: p = psutil.Process\\(pid\\) print\\('PID', pid, 'running:', p.name\\(\\), p.status\\(\\)\\) except: print\\('PID', pid, 'not found - Abaqus not running'\\) \")",
+      "Bash(tasklist /FI \"PID eq 31096\")",
+      "Bash(python:*)"
+    ]
+  }
+}

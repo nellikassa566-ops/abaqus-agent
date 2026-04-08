@@ -1,32 +1,47 @@
 # -*- coding: utf-8 -*-
 """
-Abaqus MCP Plugin v3.2 - 文件 IPC 版本
+Abaqus MCP Plugin v3.3 - file IPC bridge.
 
-使用文件进行进程间通信，最可靠的方案。
-
-使用方法：
-1. File -> Run Script... -> 选择此文件
-2. 运行 mcp_start() 启动非阻塞模式（推荐）
-3. 运行 mcp_loop() 启动阻塞模式（有 Stop 按钮）
-4. 运行 mcp_stop() 停止
+Usage:
+1. File -> Run Script... -> choose this file
+2. Run mcp_start() for non-blocking background mode (recommended)
+3. Run mcp_loop() for blocking mode
+4. Run mcp_stop() to stop
 """
 
-import os
+import io
 import json
+import os
+import threading
 import time
 import traceback
-import threading
 from datetime import datetime
 
-# 尝试导入 Abaqus 模块
 try:
     from abaqus import mdb, session
     ABAQUS_AVAILABLE = True
 except ImportError:
     ABAQUS_AVAILABLE = False
 
-# 配置
-MCP_HOME = os.path.join(os.path.expanduser('~'), '.abaqus-mcp')
+def _resolve_mcp_home():
+    """Resolve MCP home with explicit override support."""
+    env_home = os.environ.get('ABAQUS_MCP_HOME', '').strip()
+    if env_home:
+        return os.path.abspath(os.path.expanduser(env_home))
+
+    # When possible, prefer folder of current plugin file.
+    try:
+        this_file = os.path.abspath(__file__)
+        script_dir = os.path.dirname(this_file)
+        if os.path.exists(os.path.join(script_dir, 'stop_mcp.py')):
+            return script_dir
+    except Exception:
+        pass
+
+    return os.path.join(os.path.expanduser('~'), '.abaqus-mcp')
+
+
+MCP_HOME = _resolve_mcp_home()
 COMMANDS_DIR = os.path.join(MCP_HOME, 'commands')
 RESULTS_DIR = os.path.join(MCP_HOME, 'results')
 SCRIPTS_DIR = os.path.join(MCP_HOME, 'scripts')
@@ -41,17 +56,40 @@ def ensure_dirs():
 
 
 def write_status(status, message=""):
+    """Write status atomically so external readers never see partial JSON."""
+    payload = {
+        "status": status,
+        "message": message,
+        "timestamp": time.time(),
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "pid": os.getpid(),
+    }
+
+    tmp_file = STATUS_FILE + '.tmp'
     try:
-        with open(STATUS_FILE, 'w') as f:
-            json.dump({
-                "status": status,
-                "message": message,
-                "timestamp": time.time(),
-                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "pid": os.getpid()
-            }, f, indent=2)
-    except:
+        with io.open(tmp_file, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+
+        for _ in range(5):
+            try:
+                os.replace(tmp_file, STATUS_FILE)
+                return
+            except Exception:
+                time.sleep(0.02)
+
+        with io.open(STATUS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2)
+        try:
+            os.remove(tmp_file)
+        except Exception:
+            pass
+    except Exception:
         pass
+
+
+def _write_json(path, data):
+    with io.open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2)
 
 
 def execute_script(script_content, script_id):
@@ -60,289 +98,464 @@ def execute_script(script_content, script_id):
         "success": False,
         "output": "",
         "error": None,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
-    
-    script_path = os.path.join(SCRIPTS_DIR, "script_" + script_id + ".py")
+
+    script_path = os.path.join(SCRIPTS_DIR, 'script_' + script_id + '.py')
     try:
-        with open(script_path, 'w', encoding='utf-8') as f:
+        with io.open(script_path, 'w', encoding='utf-8') as f:
             f.write(script_content)
     except Exception as e:
-        result["error"] = str(e)
+        result['error'] = str(e)
         return result
-    
+
     exec_globals = {'__name__': '__main__', '__file__': script_path}
     try:
         from abaqus import mdb, session
         exec_globals['mdb'] = mdb
         exec_globals['session'] = session
-    except:
+    except Exception:
         pass
-    
+
     output_lines = []
     exec_globals['print'] = lambda *a, **k: output_lines.append(' '.join(str(x) for x in a))
-    
+
     try:
-        with open(script_path, 'r', encoding='utf-8') as f:
+        with io.open(script_path, 'r', encoding='utf-8') as f:
             exec(compile(f.read(), script_path, 'exec'), exec_globals)
-        result["success"] = True
-        result["output"] = '\n'.join(output_lines)
+        result['success'] = True
+        result['output'] = '\n'.join(output_lines)
     except Exception as e:
-        result["error"] = str(e)
-        result["traceback"] = traceback.format_exc()
-    
+        result['error'] = str(e)
+        result['traceback'] = traceback.format_exc()
+
     try:
         os.remove(script_path)
-    except:
+    except Exception:
         pass
-    
+
     return result
 
 
 def get_model_info():
-    info = {"models": [], "working_directory": os.getcwd()}
+    info = {'models': [], 'working_directory': os.getcwd()}
     try:
         from abaqus import mdb, session
         for name in mdb.models.keys():
-            m = mdb.models[name]
-            info["models"].append({
-                "name": name,
-                "parts": list(m.parts.keys()) if hasattr(m, 'parts') else [],
-                "materials": list(m.materials.keys()) if hasattr(m, 'materials') else [],
-                "steps": list(m.steps.keys()) if hasattr(m, 'steps') else [],
+            model_obj = mdb.models[name]
+            info['models'].append({
+                'name': name,
+                'parts': list(model_obj.parts.keys()) if hasattr(model_obj, 'parts') else [],
+                'materials': list(model_obj.materials.keys()) if hasattr(model_obj, 'materials') else [],
+                'steps': list(model_obj.steps.keys()) if hasattr(model_obj, 'steps') else [],
             })
         if hasattr(session, 'viewports'):
-            info["current_viewport"] = session.currentViewportName
+            info['current_viewport'] = session.currentViewportName
     except Exception as e:
-        info["error"] = str(e)
+        info['error'] = str(e)
     return info
 
 
 def process_command(command):
     cmd_id = command.get('id', 'unknown')
     cmd_type = command.get('type', 'unknown')
-    result = {"id": cmd_id, "success": False, "timestamp": time.time()}
-    
+    result = {'id': cmd_id, 'success': False, 'timestamp': time.time()}
+
     try:
         if cmd_type == 'execute_script':
             result = execute_script(command.get('script', ''), cmd_id)
         elif cmd_type == 'get_model_info':
-            result["success"] = True
-            result["data"] = get_model_info()
+            result['success'] = True
+            result['data'] = get_model_info()
         elif cmd_type == 'get_message_log':
-            result["success"] = True
-            result["data"] = "Log not available"
+            result['success'] = True
+            result['data'] = 'Log not available'
         elif cmd_type == 'ping':
-            result["success"] = True
-            result["data"] = "pong"
+            result['success'] = True
+            result['data'] = 'pong'
         elif cmd_type == 'stop':
-            result["success"] = True
-            result["data"] = "stopping"
-            # 创建停止标志
-            with open(STOP_FILE, 'w') as f:
+            result['success'] = True
+            result['data'] = 'stopping'
+            with io.open(STOP_FILE, 'w', encoding='utf-8') as f:
                 f.write('stop')
         else:
-            result["error"] = "Unknown command: " + cmd_type
+            result['error'] = 'Unknown command: ' + cmd_type
     except Exception as e:
-        result["error"] = str(e)
-    
+        result['error'] = str(e)
+
     return result
 
 
+def _load_command_file(cmd_path, retries=3, delay=0.03):
+    """Retry reads briefly to tolerate partially-written command files."""
+    for _ in range(retries):
+        try:
+            # utf-8-sig also handles UTF-8 files with BOM (EF BB BF).
+            with io.open(cmd_path, 'r', encoding='utf-8-sig') as f:
+                return json.load(f)
+        except Exception:
+            time.sleep(delay)
+    return None
+
+
 def poll_once():
-    """
-    处理一个待处理的命令
-    
-    返回: True 如果处理了命令，False 如果没有命令
-    """
+    """Process a single command. Returns True if one command was processed."""
+    global _mcp_last_status_time
+    if not _mcp_running:
+        return False
+    now = time.time()
+    if now - _mcp_last_status_time >= 2.0:
+        write_status('running', 'Polling active (GUI after-timer)')
+        _mcp_last_status_time = now
     try:
-        # 获取命令文件列表
-        cmd_files = [f for f in os.listdir(COMMANDS_DIR) if f.endswith('.json')]
+        cmd_files = [name for name in os.listdir(COMMANDS_DIR) if name.endswith('.json')]
         if not cmd_files:
             return False
-        
-        # 按时间排序，处理最早的命令
+
         cmd_files.sort()
         cmd_file = cmd_files[0]
         cmd_path = os.path.join(COMMANDS_DIR, cmd_file)
-        
-        # 读取命令
-        with open(cmd_path, 'r', encoding='utf-8') as f:
-            command = json.load(f)
-        
+
+        command = _load_command_file(cmd_path)
+        if command is None:
+            return False
+
         cmd_id = command.get('id', 'unknown')
         cmd_type = command.get('type', 'unknown')
-        
-        # 删除命令文件
+
         try:
             os.remove(cmd_path)
-        except:
+        except Exception:
             pass
-        
-        # 处理命令
+
         result = process_command(command)
-        
-        # 写入结果
+
         result_path = os.path.join(RESULTS_DIR, cmd_id + '.json')
-        with open(result_path, 'w', encoding='utf-8') as f:
-            json.dump(result, f, indent=2)
-        
+        _write_json(result_path, result)
+
         if cmd_type != 'ping':
-            status = "OK" if result.get('success') else "FAIL"
-            print("MCP: " + cmd_type + " [" + status + "]")
-        
+            status = 'OK' if result.get('success') else 'FAIL'
+            print('MCP: ' + cmd_type + ' [' + status + ']')
+
         return True
-        
     except Exception as e:
-        print("MCP: Error: " + str(e))
+        print('MCP: Error: ' + str(e))
         return False
 
 
-def mcp_stop():
-    """
-    停止 mcp_loop() 或 mcp_start()
-    
-    在 Abaqus 控制台的另一行输入此命令，或从外部调用
-    """
-    global _mcp_running
-    _mcp_running = False
-    with open(STOP_FILE, 'w') as f:
-        f.write('stop')
-    print("MCP: Stop signal sent")
-
-
-# 全局变量用于非阻塞模式
 _mcp_running = False
 _mcp_thread = None
+_mcp_generation = 0
+_mcp_poll_interval = 0.1
+_mcp_last_status_time = 0.0
 
 
-def _mcp_thread_loop():
-    """后台线程中运行的轮询循环"""
-    global _mcp_running
-    
-    while _mcp_running:
-        # 检查停止标志
-        if os.path.exists(STOP_FILE):
-            try:
-                os.remove(STOP_FILE)
-            except:
-                pass
-            _mcp_running = False
-            print("MCP: Stopped by stop.flag")
-            break
-        
-        # 处理命令
-        poll_once()
-        time.sleep(0.1)  # 100ms 轮询间隔
-    
-    write_status("stopped", "Polling stopped")
-    print("MCP: Background loop ended")
-
-
-def mcp_start():
-    """
-    非阻塞方式启动 MCP 轮询（使用后台线程）
-    
-    不会阻塞 Abaqus GUI，可以正常使用界面
-    使用 mcp_stop() 或 Plug-ins -> MCP -> Stop MCP 停止
-    """
-    global _mcp_running, _mcp_thread
-    
-    if _mcp_running:
-        print("MCP: Already running")
-        return
-    
-    # 清除之前的停止标志
-    if os.path.exists(STOP_FILE):
-        os.remove(STOP_FILE)
-    
-    _mcp_running = True
-    print("MCP: Starting in background thread...")
-    print("MCP: Use mcp_stop() or Plug-ins -> MCP -> Stop MCP to stop")
-    print("MCP: Abaqus GUI remains responsive!")
-    write_status("running", "Polling active (background thread)")
-    
-    # 启动后台线程
-    _mcp_thread = threading.Thread(target=_mcp_thread_loop, daemon=True)
-    _mcp_thread.start()
-
-
-def mcp_loop():
-    """
-    持续处理 MCP 命令
-    
-    停止方法：
-    1. 运行 stop_mcp.py
-    2. 或使用 MCP 发送 stop 命令
-    """
-    # 清除之前的停止标志
-    if os.path.exists(STOP_FILE):
-        os.remove(STOP_FILE)
-    
-    print("MCP: Listening for commands...")
-    print("MCP: To stop, run in PowerShell:")
-    print('     echo $null > "$env:USERPROFILE\\.abaqus-mcp\\stop.flag"')
-    print("")
-    write_status("running", "Polling active")
-    
+def _set_thread_daemon(thread_obj):
+    """Set daemon flag with Python 2/3 compatibility."""
     try:
-        while True:
-            # 检查停止标志
+        thread_obj.daemon = True
+    except Exception:
+        try:
+            thread_obj.setDaemon(True)
+        except Exception:
+            pass
+    return thread_obj
+
+
+def _thread_is_alive(thread_obj):
+    if thread_obj is None:
+        return False
+    try:
+        return thread_obj.is_alive()
+    except Exception:
+        try:
+            return thread_obj.isAlive()
+        except Exception:
+            return False
+
+
+def _mcp_thread_loop(generation, poll_interval):
+    """Background polling loop used by non-blocking start modes."""
+    global _mcp_running, _mcp_thread, _mcp_generation
+    last_status_time = 0.0
+
+    try:
+        while _mcp_running and _mcp_generation == generation:
+            now = time.time()
+            if now - last_status_time >= 2.0:
+                write_status('running', 'Polling active (background)')
+                last_status_time = now
+
             if os.path.exists(STOP_FILE):
                 try:
                     os.remove(STOP_FILE)
-                except:
+                except Exception:
                     pass
-                print("MCP: Stopped by stop.flag")
+                _mcp_running = False
+                print('MCP: Stopped by stop.flag')
                 break
-            
+
             poll_once()
-            time.sleep(0.1)  # 100ms 轮询间隔
-            
-    except KeyboardInterrupt:
-        print("\nMCP: Stopped by Ctrl+C")
+            time.sleep(poll_interval)
     except Exception as e:
-        print("MCP: Error: " + str(e))
-    
-    write_status("stopped", "Polling stopped")
-    print("MCP: Loop ended")
+        err_path = os.path.join(MCP_HOME, 'thread_error.log')
+        try:
+            with io.open(err_path, 'w', encoding='utf-8') as f:
+                f.write(str(e) + '\n\n')
+                f.write(traceback.format_exc())
+        except Exception:
+            pass
+        print('MCP: Background worker error: ' + str(e))
+    finally:
+        if _mcp_generation == generation:
+            _mcp_running = False
+            _mcp_thread = None
+            write_status('stopped', 'Polling stopped')
+            print('MCP: Background loop ended')
+
+
+def _start_worker(interval=0.1, mode_name='background'):
+    global _mcp_running, _mcp_thread, _mcp_generation, _mcp_poll_interval
+
+    if _thread_is_alive(_mcp_thread):
+        print('MCP: Already running')
+        return True
+
+    if _mcp_running:
+        print('MCP: Recovering from stale running state')
+        _mcp_running = False
+
+    if os.path.exists(STOP_FILE):
+        try:
+            os.remove(STOP_FILE)
+        except Exception:
+            pass
+
+    try:
+        _mcp_poll_interval = max(0.02, float(interval))
+    except Exception:
+        _mcp_poll_interval = 0.1
+
+    _mcp_generation += 1
+    generation = _mcp_generation
+    _mcp_running = True
+
+    print('MCP: Starting in ' + mode_name + ' worker...')
+    print('MCP: Use mcp_stop() or Plug-ins -> MCP -> Stop MCP to stop')
+    print('MCP: Abaqus GUI remains responsive!')
+
+    try:
+        worker = threading.Thread(target=_mcp_thread_loop, args=(generation, _mcp_poll_interval))
+        _set_thread_daemon(worker)
+        worker.start()
+        _mcp_thread = worker
+    except Exception as e:
+        _mcp_running = False
+        _mcp_thread = None
+        write_status('error', 'Background start failed: ' + str(e))
+        print('MCP: Failed to start background worker: ' + str(e))
+        return False
+
+    # Self-check to avoid stale "running" state when worker dies immediately.
+    time.sleep(0.05)
+    if not _thread_is_alive(_mcp_thread):
+        _mcp_running = False
+        _mcp_thread = None
+        write_status('error', 'Background worker exited during startup')
+        print('MCP: Background worker exited during startup')
+        return False
+
+    write_status('running', 'Polling active (' + mode_name + ')')
+    print('MCP: Background worker started (interval=' + str(_mcp_poll_interval) + 's)')
+    return True
+
+
+def mcp_start(interval=0.1):
+    """Start background thread polling + enables GUI after-timer if available."""
+    global _mcp_running, _mcp_poll_interval
+
+    if _mcp_running:
+        print('MCP: Already running')
+        return
+
+    if os.path.exists(STOP_FILE):
+        try:
+            os.remove(STOP_FILE)
+        except Exception:
+            pass
+
+    _mcp_poll_interval = max(0.02, float(interval))
+
+    # Start background thread (handles ping and simple commands)
+    # GUI plugin's after()-timer will handle execute_script on main thread
+    _start_worker(interval=interval, mode_name='background')
+
+
+def mcp_start_timer(interval=0.1):
+    """Compatibility alias for previous timer mode."""
+    _start_worker(interval=interval, mode_name='timer-compatible')
+
+
+def mcp_stop():
+    """Stop mcp_loop() or mcp_start()."""
+    global _mcp_running, _mcp_thread, _mcp_generation
+
+    _mcp_running = False
+    _mcp_generation += 1
+
+    try:
+        with io.open(STOP_FILE, 'w', encoding='utf-8') as f:
+            f.write('stop')
+    except Exception:
+        pass
+
+    if _thread_is_alive(_mcp_thread):
+        try:
+            _mcp_thread.join(1.0)
+        except Exception:
+            pass
+
+    _mcp_thread = None
+    write_status('stopped', 'Polling stopped')
+    print('MCP: Stop signal sent')
+
+
+def mcp_loop(sleep_interval=0.1):
+    """Blocking loop that continuously processes MCP commands."""
+    global _mcp_running
+    if os.path.exists(STOP_FILE):
+        try:
+            os.remove(STOP_FILE)
+        except Exception:
+            pass
+
+    _mcp_running = True
+    print('MCP: Listening for commands...')
+    print('MCP: To stop, run in PowerShell:')
+    print('     echo $null > "$env:USERPROFILE\\.abaqus-mcp\\stop.flag"')
+    print('')
+
+    write_status('running', 'Polling active (blocking)')
+    last_status_time = 0.0
+
+    try:
+        while True:
+            now = time.time()
+            if now - last_status_time >= 2.0:
+                write_status('running', 'Polling active (blocking)')
+                last_status_time = now
+
+            if os.path.exists(STOP_FILE):
+                try:
+                    os.remove(STOP_FILE)
+                except Exception:
+                    pass
+                print('MCP: Stopped by stop.flag')
+                break
+
+            poll_once()
+            time.sleep(max(0.02, float(sleep_interval)))
+    except KeyboardInterrupt:
+        print('\nMCP: Stopped by Ctrl+C')
+    except Exception as e:
+        print('MCP: Error: ' + str(e))
+
+    write_status('stopped', 'Polling stopped')
+    print('MCP: Loop ended')
+
+
+def mcp_coop_loop(sleep_interval=0.1):
+    """
+    Cooperative loop.
+
+    This still runs a loop in the current thread, but yields GUI updates,
+    so Abaqus remains responsive compared to mcp_loop().
+    """
+    global _mcp_running
+    if os.path.exists(STOP_FILE):
+        try:
+            os.remove(STOP_FILE)
+        except Exception:
+            pass
+
+    _mcp_running = True
+    print('MCP: Listening for commands... (cooperative mode)')
+    print('MCP: To stop, run mcp_stop() or create stop.flag')
+    write_status('running', 'Polling active (cooperative)')
+    last_status_time = 0.0
+
+    try:
+        while True:
+            now = time.time()
+            if now - last_status_time >= 2.0:
+                write_status('running', 'Polling active (cooperative)')
+                last_status_time = now
+
+            if os.path.exists(STOP_FILE):
+                try:
+                    os.remove(STOP_FILE)
+                except Exception:
+                    pass
+                print('MCP: Stopped by stop.flag')
+                break
+
+            poll_once()
+
+            try:
+                if ABAQUS_AVAILABLE:
+                    session.processUpdates()
+            except Exception:
+                pass
+
+            time.sleep(max(0.02, float(sleep_interval)))
+    except KeyboardInterrupt:
+        print('\nMCP: Stopped by Ctrl+C')
+    except Exception as e:
+        print('MCP: Error: ' + str(e))
+
+    write_status('stopped', 'Polling stopped')
+    print('MCP: Cooperative loop ended')
 
 
 def mcp_status():
-    print("")
-    print("=" * 50)
-    print("MCP Status")
-    print("=" * 50)
-    print("Mode: File IPC")
-    print("Commands dir: " + COMMANDS_DIR)
-    print("Results dir: " + RESULTS_DIR)
-    print("Stop file: " + STOP_FILE)
-    print("")
-    print("Usage:")
-    print("  mcp_loop()  - Process commands continuously")
-    print("  poll_once() - Process one command")
-    print("")
-    print("To stop mcp_loop(), run in PowerShell:")
+    print('')
+    print('=' * 50)
+    print('MCP Status')
+    print('=' * 50)
+    print('Mode: File IPC')
+    print('Commands dir: ' + COMMANDS_DIR)
+    print('Results dir: ' + RESULTS_DIR)
+    print('Stop file: ' + STOP_FILE)
+    print('')
+    print('Usage:')
+    print('  mcp_start()        - Non-blocking background mode')
+    print('  mcp_start_timer()  - Alias of mcp_start()')
+    print('  mcp_coop_loop()    - Cooperative loop (GUI-friendly)')
+    print('  mcp_loop()         - Blocking mode')
+    print('  poll_once()        - Process one command')
+    print('')
+    print('To stop, run mcp_stop() or:')
     print('  echo $null > "$env:USERPROFILE\\.abaqus-mcp\\stop.flag"')
-    print("=" * 50)
+    print('=' * 50)
 
-
-# ========== 初始化 ==========
 
 ensure_dirs()
-write_status("ready", "Plugin loaded")
+write_status('ready', 'Plugin loaded')
 
-print("")
-print("=" * 50)
-print("Abaqus MCP Plugin v3.1 (File IPC)")
-print("=" * 50)
-print("Home: " + MCP_HOME)
-print("Abaqus: " + str(ABAQUS_AVAILABLE))
-print("")
-print("To process MCP commands, run:")
-print("  mcp_loop()  - Process continuously")
-print("  poll_once() - Process one command")
-print("")
-print("To stop mcp_loop(), run in PowerShell:")
+print('')
+print('=' * 50)
+print('Abaqus MCP Plugin v3.3 (File IPC)')
+print('=' * 50)
+print('Home: ' + MCP_HOME)
+print('Abaqus: ' + str(ABAQUS_AVAILABLE))
+print('')
+print('To process MCP commands, run:')
+print('  mcp_start()  - Non-blocking background mode')
+print('  mcp_loop()   - Blocking mode')
+print('  poll_once()  - Process one command')
+print('')
+print('To stop, run:')
+print('  mcp_stop()')
+print('or')
 print('  echo $null > "$env:USERPROFILE\\.abaqus-mcp\\stop.flag"')
-print("=" * 50)
+print('=' * 50)
