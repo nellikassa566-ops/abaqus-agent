@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-停止 Abaqus MCP 循环
+Stop Abaqus MCP loop.
 
-在任意 Python 环境中运行此脚本即可停止 mcp_loop()
+Run this script from any Python environment to signal the MCP plugin to stop.
+Respects the ABAQUS_MCP_HOME environment variable.
 """
 import os
 
-stop_file = os.path.join(os.path.expanduser('~'), '.abaqus-mcp', 'stop.flag')
+mcp_home = os.environ.get('ABAQUS_MCP_HOME', '').strip()
+if not mcp_home:
+    mcp_home = os.path.join(os.path.expanduser('~'), '.abaqus-mcp')
+
+stop_file = os.path.join(mcp_home, 'stop.flag')
 with open(stop_file, 'w') as f:
     f.write('stop')
-print("Stop signal sent to Abaqus MCP")
+print("Stop signal sent to Abaqus MCP (" + mcp_home + ")")
