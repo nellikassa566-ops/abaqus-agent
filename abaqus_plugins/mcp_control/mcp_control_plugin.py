@@ -9,14 +9,14 @@ from abaqusConstants import ALL
 toolset = getAFXApp().getAFXMainWindow().getPluginToolset()
 
 toolset.registerKernelMenuButton(
-    buttonText='MCP|Start MCP (Background)',
+    buttonText='MCP|Start MCP (Background, Experimental)',
     moduleName='__main__',
     functionName='mcp_start()',
     icon=None,
     applicableModules=ALL,
     version='4.0',
     author='MCP Plugin',
-    description='Start MCP in background thread (non-blocking, recommended)',
+    description='Start MCP in background thread (experimental on some Abaqus builds)',
     helpUrl=''
 )
 

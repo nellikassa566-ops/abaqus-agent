@@ -19,6 +19,7 @@ import os
 import threading
 import time
 import traceback
+import uuid
 from datetime import datetime
 
 __version__ = '4.0.0'
@@ -108,6 +109,54 @@ def write_status(status, message=""):
 def _write_json(path, data):
     with io.open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+def _background_self_test(timeout=1.5):
+    """
+    Verify background worker can consume command files and write result files.
+    Returns True if ping loopback succeeds.
+    """
+    test_id = 'bgtest_' + uuid.uuid4().hex[:8]
+    cmd_path = os.path.join(COMMANDS_DIR, 'cmd_' + test_id + '.json')
+    result_path = os.path.join(RESULTS_DIR, test_id + '.json')
+    command = {
+        'id': test_id,
+        'type': 'ping',
+        'timestamp': time.time(),
+    }
+    try:
+        _write_json(cmd_path, command)
+    except Exception:
+        return False
+
+    deadline = time.time() + max(0.5, float(timeout))
+    while time.time() < deadline:
+        if os.path.exists(result_path):
+            try:
+                with io.open(result_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                return bool(data.get('success'))
+            except Exception:
+                return False
+            finally:
+                try:
+                    os.remove(result_path)
+                except Exception:
+                    pass
+        time.sleep(0.05)
+
+    # cleanup stale test command/result
+    try:
+        if os.path.exists(cmd_path):
+            os.remove(cmd_path)
+    except Exception:
+        pass
+    try:
+        if os.path.exists(result_path):
+            os.remove(result_path)
+    except Exception:
+        pass
+    return False
 
 
 def _cleanup_stale_commands():
@@ -565,7 +614,7 @@ def _start_worker(interval=0.1, mode_name='background'):
 
 
 def mcp_start(interval=0.1):
-    """Start background thread polling (recommended, non-blocking)."""
+    """Start background thread polling (experimental on some Abaqus builds)."""
     global _mcp_running, _mcp_poll_interval
 
     if _mcp_running:
@@ -579,7 +628,18 @@ def mcp_start(interval=0.1):
             pass
 
     _mcp_poll_interval = max(0.02, float(interval))
-    _start_worker(interval=interval, mode_name='background')
+    ok = _start_worker(interval=interval, mode_name='background')
+    if not ok:
+        return
+
+    # Validate background mode really processes file IPC.
+    if not _background_self_test(timeout=1.5):
+        _log('WARN', 'Background mode self-test failed; recommend mcp_loop()')
+        print('MCP: Background mode did not pass self-test in this Abaqus session.')
+        print('MCP: Recommended stable mode: mcp_loop()')
+        print('MCP: You can stop current mode with mcp_stop().')
+    else:
+        print('MCP: Background mode self-test passed.')
 
 
 def mcp_start_timer(interval=0.1):
@@ -742,7 +802,7 @@ def mcp_status():
         print('Uptime:       ' + str(int(time.time() - _mcp_start_time)) + 's')
     print('')
     print('Commands:')
-    print('  mcp_start()        - Non-blocking background (recommended)')
+    print('  mcp_start()        - Non-blocking background (experimental)')
     print('  mcp_start_timer()  - Alias of mcp_start()')
     print('  mcp_coop_loop()    - Cooperative loop (GUI-friendly)')
     print('  mcp_loop()         - Blocking mode')

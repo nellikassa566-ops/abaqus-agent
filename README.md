@@ -96,10 +96,10 @@ Add to your Cursor / Claude Desktop MCP settings (`.mcp.json`):
 
 ### Start MCP (in Abaqus)
 
-**Recommended** — non-blocking background thread:
+**Experimental** — non-blocking background thread (may be unstable on some Abaqus builds):
 
 ```python
-mcp_start()  # GUI remains responsive
+mcp_start()  # GUI remains responsive if background worker is supported
 ```
 
 Menu: `Plug-ins` → `MCP` → `Start MCP (Background)`
@@ -120,11 +120,15 @@ mcp_loop()  # blocks console
 
 Menu: `Plug-ins` → `MCP` → `Start MCP (Blocking)`
 
-| Mode | GUI Responsive | Stop Method |
-|------|----------------|-------------|
-| Background (`mcp_start()`) | Yes | `mcp_stop()` or menu |
-| Cooperative (`mcp_coop_loop()`) | Mostly yes | `mcp_stop()` or `stop.flag` |
-| Blocking (`mcp_loop()`) | No | `stop.flag` / interrupt |
+
+| Mode                            | GUI Responsive     | Stop Method                 |
+| ------------------------------- | ------------------ | --------------------------- |
+| Background (`mcp_start()`)      | Yes (if supported) | `mcp_stop()` or menu        |
+| Cooperative (`mcp_coop_loop()`) | Mostly yes         | `mcp_stop()` or `stop.flag` |
+| Blocking (`mcp_loop()`)         | No                 | `stop.flag` / interrupt     |
+
+
+For maximum reliability, use `mcp_loop()` in production sessions.
 
 ### Check Status
 
@@ -156,22 +160,26 @@ Option 4 — Run `stop_mcp.py` from any Python environment.
 
 These tools are exposed to MCP clients via `mcp_server.py`:
 
-| Tool | Description |
-|------|-------------|
-| `check_abaqus_connection` | Verify Abaqus is running and plugin is responding |
-| `execute_script` | Execute a Python script inside Abaqus/CAE |
-| `get_model_info` | Get model details (parts, materials, steps, loads, BCs, etc.) |
-| `list_jobs` | List all analysis jobs in the session |
-| `submit_job` | Submit a job by name and wait for completion |
-| `get_odb_info` | Open an ODB file read-only and return metadata |
-| `get_viewport_image` | Capture a viewport screenshot as base64 |
-| `ping` | Test connection (returns version info) |
+
+| Tool                      | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `check_abaqus_connection` | Verify Abaqus is running and plugin is responding             |
+| `execute_script`          | Execute a Python script inside Abaqus/CAE                     |
+| `get_model_info`          | Get model details (parts, materials, steps, loads, BCs, etc.) |
+| `list_jobs`               | List all analysis jobs in the session                         |
+| `submit_job`              | Submit a job by name and wait for completion                  |
+| `get_odb_info`            | Open an ODB file read-only and return metadata                |
+| `get_viewport_image`      | Capture a viewport screenshot as base64                       |
+| `ping`                    | Test connection (returns version info)                        |
+
 
 ## MCP Resources
 
-| URI | Description |
-|-----|-------------|
+
+| URI               | Description                                                |
+| ----------------- | ---------------------------------------------------------- |
 | `abaqus://status` | Real-time plugin status (running/stopped, version, uptime) |
+
 
 ## File-Based IPC Protocol
 
@@ -196,16 +204,18 @@ Result will appear at `~/.abaqus-mcp/results/my_command.json`.
 
 ### Command Types
 
-| Type | Parameters | Description |
-|------|-----------|-------------|
-| `execute_script` | `script` (str) | Execute Python script in Abaqus |
-| `get_model_info` | — | Get current model information |
-| `list_jobs` | — | List all defined jobs |
-| `submit_job` | `job_name` (str) | Submit and wait for a job |
-| `get_odb_info` | `odb_path` (str) | Read ODB metadata |
-| `get_viewport_image` | `viewport_name`, `format` | Capture viewport screenshot |
-| `ping` | — | Test connection |
-| `stop` | — | Request loop stop |
+
+| Type                 | Parameters                | Description                     |
+| -------------------- | ------------------------- | ------------------------------- |
+| `execute_script`     | `script` (str)            | Execute Python script in Abaqus |
+| `get_model_info`     | —                         | Get current model information   |
+| `list_jobs`          | —                         | List all defined jobs           |
+| `submit_job`         | `job_name` (str)          | Submit and wait for a job       |
+| `get_odb_info`       | `odb_path` (str)          | Read ODB metadata               |
+| `get_viewport_image` | `viewport_name`, `format` | Capture viewport screenshot     |
+| `ping`               | —                         | Test connection                 |
+| `stop`               | —                         | Request loop stop               |
+
 
 ## Directory Structure
 
@@ -235,19 +245,14 @@ Result will appear at `~/.abaqus-mcp/results/my_command.json`.
   1. Run `mcp_stop()` then `mcp_start()` again
   2. Check `~/.abaqus-mcp/status.json` — timestamp should update every ~2s
   3. Check `~/.abaqus-mcp/mcp.log` for errors
-
 - **Abaqus uses a different home directory:**
-
   ```python
   import os; os.environ['ABAQUS_MCP_HOME'] = r'C:\Users\YourName\.abaqus-mcp'
   ```
-
   Set this before loading the plugin.
-
 - **Commands timing out:**
   - Stale commands (>2 min) are auto-cleaned
   - Ensure the plugin is in `running` state via `mcp_status()`
-
 - **GUI plugin not showing:**
   - Verify `~/abaqus_plugins/mcp_control/` exists and contains `mcp_control_plugin.py`
   - Restart Abaqus/CAE
