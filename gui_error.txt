@@ -1,1 +1,0 @@
-after() FAILED: mainWindow='AFXMainWindow_Ptr' object has no attribute 'after' app='AFXApp_Ptr' object has no attribute 'after'
