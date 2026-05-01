@@ -1,0 +1,10 @@
+{
+  "title": "TSV thermal cycle",
+  "description": "Silicon block with a copper through-silicon via and a tabular temperature cycle.",
+  "properties": {
+    "model_name": {"type": "string"},
+    "parts": {"type": "array"},
+    "materials": {"type": "array"},
+    "mesh": {"type": "object"}
+  }
+}

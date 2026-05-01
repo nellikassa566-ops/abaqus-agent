@@ -1,0 +1,13 @@
+{
+  "template": "Heat transfer",
+  "spec": {
+    "model_name": "Heat_Transfer",
+    "parts": [{"name": "Block", "type": "block", "dimensions": [10.0, 10.0, 2.0], "origin": [0.0, 0.0, 0.0]}],
+    "materials": [{"name": "thermal_elastic", "elastic": {"youngs_modulus": 100000.0, "poisson_ratio": 0.3}, "expansion": {"coefficient": 1.0e-5}}],
+    "sections": [{"name": "Section-Block", "material": "thermal_elastic", "parts": ["Block"]}],
+    "steps": [{"name": "Heat", "type": "heat_transfer", "time_period": 10.0}],
+    "boundary_conditions": [{"name": "BC-Temp", "type": "temperature", "step": "Heat", "region": {"part": "Block", "face": "zMax"}, "magnitude": 100.0}],
+    "mesh": {"global_size": 1.0, "element_type": "C3D8R"},
+    "jobs": [{"name": "Job-Heat", "model": "Heat_Transfer"}]
+  }
+}

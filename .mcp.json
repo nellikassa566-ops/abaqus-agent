@@ -2,7 +2,7 @@
   "mcpServers": {
     "abaqus-mcp-server": {
       "command": "python",
-      "args": ["C:/Users/Cai/.abaqus-mcp/mcp_server.py"]
+      "args": ["C:/Users/YourUsername/.abaqus-mcp/mcp_server.py"]
     }
   }
 }

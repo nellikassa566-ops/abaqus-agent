@@ -1,0 +1,1 @@
+{"title": "Heat transfer", "description": "Starter block heat-transfer model with a temperature boundary.", "properties": {"model_name": {"type": "string"}}}

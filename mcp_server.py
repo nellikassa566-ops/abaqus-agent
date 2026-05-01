@@ -15,6 +15,14 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
+from abaqus_mcp_tools import (
+    build_command_payload,
+    instantiate_template as instantiate_template_spec,
+    list_template_metadata,
+    parse_job_diagnostics_files,
+    validate_model_spec as _validate_model_spec,
+)
+
 MCP_HOME = Path(os.environ.get('ABAQUS_MCP_HOME', Path.home() / '.abaqus-mcp'))
 COMMANDS_DIR = MCP_HOME / 'commands'
 RESULTS_DIR = MCP_HOME / 'results'
@@ -116,7 +124,7 @@ def check_abaqus_connection() -> str:
 
 @mcp.tool()
 def execute_script(script: str) -> str:
-    """Execute a Python script inside Abaqus/CAE.
+    """Expert escape hatch: execute a Python script inside Abaqus/CAE.
 
     The script runs in the Abaqus kernel environment with access to mdb and session.
     Use print() to return output.
@@ -144,6 +152,93 @@ def get_model_info() -> str:
         return json.dumps(data, indent=2, ensure_ascii=False)
     else:
         return f'Error: {result.get("error", "Unknown error")}'
+
+
+def _coerce_json_object(value, field_name: str) -> dict:
+    """Accept dicts from MCP clients or JSON strings from text-only clients."""
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except Exception as exc:
+            raise ValueError(f'{field_name} must be a JSON object: {exc}')
+        if isinstance(parsed, dict):
+            return parsed
+    raise ValueError(f'{field_name} must be a JSON object')
+
+
+@mcp.tool()
+def list_templates() -> str:
+    """List installed parameterized Abaqus model templates."""
+    return json.dumps({'templates': list_template_metadata()}, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def instantiate_template(template_id: str, parameters: dict = None) -> str:
+    """Instantiate a parameterized template and return a validated model spec."""
+    try:
+        params = _coerce_json_object(parameters, 'parameters')
+        spec = instantiate_template_spec(template_id, params)
+        return json.dumps({'success': True, 'spec': spec}, indent=2, ensure_ascii=False)
+    except Exception as exc:
+        return f'Error: {exc}'
+
+
+@mcp.tool()
+def validate_model_spec(spec: dict) -> str:
+    """Validate a structured model spec without contacting Abaqus."""
+    try:
+        spec_obj = _coerce_json_object(spec, 'spec')
+        return json.dumps(_validate_model_spec(spec_obj), indent=2, ensure_ascii=False)
+    except Exception as exc:
+        return f'Error: {exc}'
+
+
+@mcp.tool()
+def create_or_update_model_from_spec(spec: dict, dry_run: bool = True) -> str:
+    """Create or update an Abaqus model from a structured JSON spec.
+
+    Default dry_run=True returns validation and planned actions without mutating
+    the Abaqus model. Set dry_run=False to build the model in Abaqus/CAE.
+    """
+    try:
+        spec_obj = _coerce_json_object(spec, 'spec')
+        payload = build_command_payload('build_model_from_spec', spec=spec_obj, dry_run=dry_run)
+        validation = payload['validation']
+        if not validation.get('valid'):
+            return json.dumps({'success': False, 'validation': validation}, indent=2, ensure_ascii=False)
+        result = _send_command(
+            'build_model_from_spec',
+            timeout=300.0,
+            spec=payload['spec'],
+            dry_run=dry_run,
+            validation=validation,
+        )
+        return json.dumps(result, indent=2, ensure_ascii=False)
+    except Exception as exc:
+        return f'Error: {exc}'
+
+
+@mcp.tool()
+def validate_model(model_name: str = "") -> str:
+    """Run Abaqus-side model validation and return machine-readable diagnostics."""
+    result = _send_command('validate_model', timeout=60.0, model_name=model_name)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def mesh_model(model_name: str = "", global_size: float = 0.0) -> str:
+    """Seed and mesh the selected model's parts. global_size=0 keeps existing seeds."""
+    result = _send_command(
+        'mesh_model',
+        timeout=300.0,
+        model_name=model_name,
+        global_size=global_size,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -176,6 +271,58 @@ def submit_job(job_name: str) -> str:
 
 
 @mcp.tool()
+def write_input(job_name: str) -> str:
+    """Write the input file for an existing Abaqus job without submitting it."""
+    result = _send_command('write_input', timeout=120.0, job_name=job_name)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def submit_job_async(job_name: str) -> str:
+    """Submit an Abaqus job and return immediately with the initial status."""
+    result = _send_command('submit_job_async', timeout=30.0, job_name=job_name)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_job_status(job_name: str, workdir: str = "") -> str:
+    """Return Abaqus job status plus lightweight .sta/.msg/.dat diagnostics."""
+    result = _send_command(
+        'get_job_status',
+        timeout=30.0,
+        job_name=job_name,
+        workdir=workdir,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def cancel_job(job_name: str) -> str:
+    """Cancel a running Abaqus job by name."""
+    result = _send_command('cancel_job', timeout=30.0, job_name=job_name)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def parse_job_diagnostics(job_name: str, workdir: str = "") -> str:
+    """Parse Abaqus .sta/.msg/.dat diagnostics for a job."""
+    result = _send_command(
+        'parse_job_diagnostics',
+        timeout=30.0,
+        job_name=job_name,
+        workdir=workdir,
+    )
+    if result.get('success'):
+        return json.dumps(result, indent=2, ensure_ascii=False)
+
+    if workdir:
+        paths = [str(Path(workdir) / f'{job_name}.{ext}') for ext in ('sta', 'msg', 'dat')]
+        fallback = parse_job_diagnostics_files(paths)
+        return json.dumps({'success': True, 'data': fallback, 'fallback': 'local_files'}, indent=2, ensure_ascii=False)
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
 def get_odb_info(odb_path: str) -> str:
     """Open an ODB file (read-only) and return its metadata.
 
@@ -191,6 +338,92 @@ def get_odb_info(odb_path: str) -> str:
         data = result.get('data', {})
         detail = data.get('error', '') if isinstance(data, dict) else ''
         return f'Error: {error}\n{detail}'.strip()
+
+
+@mcp.tool()
+def query_odb_field(
+    odb_path: str,
+    variable: str,
+    step_name: str = "",
+    frame: int = -1,
+    time_value: float = None,
+    invariant: str = "",
+    instance: str = "",
+    element_set: str = "",
+) -> str:
+    """Query min/max/avg for an ODB field output variable."""
+    result = _send_command(
+        'query_odb_field',
+        timeout=120.0,
+        odb_path=odb_path,
+        variable=variable,
+        step_name=step_name,
+        frame=frame,
+        time_value=time_value,
+        invariant=invariant,
+        instance=instance,
+        element_set=element_set,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def extract_xy_history(
+    odb_path: str,
+    variable: str,
+    step_name: str = "",
+    region: str = "",
+) -> str:
+    """Extract ODB history output as XY pairs."""
+    result = _send_command(
+        'extract_xy_history',
+        timeout=120.0,
+        odb_path=odb_path,
+        variable=variable,
+        step_name=step_name,
+        region=region,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def export_contour_image(
+    odb_path: str,
+    variable: str,
+    output_path: str = "",
+    step_name: str = "",
+    frame: int = -1,
+    invariant: str = "",
+    instance: str = "",
+    element_set: str = "",
+) -> str:
+    """Export a fixed-view contour image from an ODB."""
+    result = _send_command(
+        'export_result_image',
+        timeout=120.0,
+        odb_path=odb_path,
+        variable=variable,
+        output_path=output_path,
+        step_name=step_name,
+        frame=frame,
+        invariant=invariant,
+        instance=instance,
+        element_set=element_set,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def export_report(odb_path: str, report_path: str = "", job_name: str = "") -> str:
+    """Create a concise Markdown report for an ODB/job."""
+    result = _send_command(
+        'export_report',
+        timeout=120.0,
+        odb_path=odb_path,
+        report_path=report_path,
+        job_name=job_name,
+    )
+    return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 @mcp.tool()

@@ -1,0 +1,55 @@
+{
+  "template": "TSV thermal cycle",
+  "spec": {
+    "model_name": "TSV_Thermal_Cycle",
+    "parts": [
+      {
+        "name": "Silicon",
+        "type": "block",
+        "dimensions": [50.0, 50.0, 60.0],
+        "origin": [-25.0, -25.0, 0.0]
+      },
+      {
+        "name": "CopperTSV",
+        "type": "cylinder",
+        "radius": 5.0,
+        "height": 60.0,
+        "origin": [0.0, 0.0, 0.0]
+      }
+    ],
+    "materials": [
+      {
+        "name": "silicon",
+        "elastic": {"youngs_modulus": 162000.0, "poisson_ratio": 0.23},
+        "expansion": {"coefficient": 2.8e-6}
+      },
+      {
+        "name": "copper",
+        "elastic": {"youngs_modulus": 110000.0, "poisson_ratio": 0.34},
+        "expansion": {"coefficient": 16.5e-6}
+      }
+    ],
+    "sections": [
+      {"name": "Section-Silicon", "material": "silicon", "parts": ["Silicon"]},
+      {"name": "Section-Copper", "material": "copper", "parts": ["CopperTSV"]}
+    ],
+    "steps": [
+      {"name": "THERMO", "type": "visco", "time_period": 5400.0, "initial_inc": 450.0, "max_inc": 450.0, "cetol": 0.01}
+    ],
+    "amplitudes": [
+      {
+        "name": "Amp-thermal-cycle",
+        "type": "tabular",
+        "data": [[0.0, 0.0], [450.0, 100.0], [1350.0, 100.0], [1800.0, 0.0], [2700.0, 0.0], [3150.0, 100.0], [4050.0, 100.0], [4500.0, 0.0], [5400.0, 0.0]]
+      }
+    ],
+    "boundary_conditions": [
+      {"name": "BC-Z-Origin", "type": "displacement", "region": {"part": "Silicon", "point": [0.0, 0.0, 0.0]}, "u3": 0.0}
+    ],
+    "predefined_fields": [
+      {"name": "Field-temp", "type": "temperature", "step": "THERMO", "magnitude": 1.0, "amplitude": "Amp-thermal-cycle"}
+    ],
+    "mesh": {"global_size": 2.0, "element_type": "C3D8R"},
+    "jobs": [{"name": "Job-TSV", "model": "TSV_Thermal_Cycle"}]
+  }
+}

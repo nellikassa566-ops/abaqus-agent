@@ -1,0 +1,16 @@
+{
+  "template": "Uniaxial tension",
+  "spec": {
+    "model_name": "Uniaxial_Tension",
+    "parts": [{"name": "Coupon", "type": "block", "dimensions": [10.0, 2.0, 2.0], "origin": [0.0, -1.0, -1.0]}],
+    "materials": [{"name": "steel", "elastic": {"youngs_modulus": 210000.0, "poisson_ratio": 0.3}}],
+    "sections": [{"name": "Section-Coupon", "material": "steel", "parts": ["Coupon"]}],
+    "steps": [{"name": "Load", "type": "static", "time_period": 1.0}],
+    "boundary_conditions": [
+      {"name": "BC-Fixed", "type": "encastre", "region": {"part": "Coupon", "face": "xMin"}},
+      {"name": "BC-Pull", "type": "displacement", "step": "Load", "region": {"part": "Coupon", "face": "xMax"}, "u1": 0.1}
+    ],
+    "mesh": {"global_size": 0.5, "element_type": "C3D8R"},
+    "jobs": [{"name": "Job-Tension", "model": "Uniaxial_Tension"}]
+  }
+}

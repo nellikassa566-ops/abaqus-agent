@@ -1,0 +1,8 @@
+{
+  "title": "BGA thermal cycle",
+  "description": "Starter BGA thermal-cycle spec with substrate, die, tabular thermal cycle, and Abaqus/Standard visco step.",
+  "properties": {
+    "model_name": {"type": "string"},
+    "mesh": {"type": "object"}
+  }
+}

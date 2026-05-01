@@ -1,0 +1,18 @@
+{
+  "template": "Contact indentation",
+  "spec": {
+    "model_name": "Contact_Indentation",
+    "parts": [
+      {"name": "Substrate", "type": "block", "dimensions": [20.0, 20.0, 5.0], "origin": [-10.0, -10.0, 0.0]},
+      {"name": "Indenter", "type": "cylinder", "radius": 2.0, "height": 2.0, "origin": [0.0, 0.0, 5.0]}
+    ],
+    "materials": [{"name": "elastic", "elastic": {"youngs_modulus": 100000.0, "poisson_ratio": 0.3}}],
+    "sections": [
+      {"name": "Section-Substrate", "material": "elastic", "parts": ["Substrate"]},
+      {"name": "Section-Indenter", "material": "elastic", "parts": ["Indenter"]}
+    ],
+    "steps": [{"name": "Indent", "type": "static", "time_period": 1.0}],
+    "mesh": {"global_size": 1.0, "element_type": "C3D8R"},
+    "jobs": [{"name": "Job-Indent", "model": "Contact_Indentation"}]
+  }
+}

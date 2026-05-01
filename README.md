@@ -166,11 +166,50 @@ These tools are exposed to MCP clients via `mcp_server.py`:
 | `check_abaqus_connection` | Verify Abaqus is running and plugin is responding             |
 | `execute_script`          | Execute a Python script inside Abaqus/CAE                     |
 | `get_model_info`          | Get model details (parts, materials, steps, loads, BCs, etc.) |
+| `list_templates`          | List installed simulation templates                           |
+| `instantiate_template`    | Create a validated model spec from a template                 |
+| `validate_model_spec`     | Validate a model spec before sending it to Abaqus             |
+| `create_or_update_model_from_spec` | Dry-run or build an Abaqus model from structured JSON |
+| `validate_model`          | Run Abaqus-side model checks and return fix hints             |
+| `mesh_model`              | Seed and mesh model parts                                     |
 | `list_jobs`               | List all analysis jobs in the session                         |
 | `submit_job`              | Submit a job by name and wait for completion                  |
+| `write_input`             | Write an input file without submitting                        |
+| `submit_job_async`        | Submit a job and return immediately                           |
+| `get_job_status`          | Read job status plus lightweight diagnostics                  |
+| `cancel_job`              | Cancel a running job                                          |
+| `parse_job_diagnostics`   | Parse `.sta`, `.msg`, and `.dat` solver diagnostics           |
 | `get_odb_info`            | Open an ODB file read-only and return metadata                |
+| `query_odb_field`         | Query min/max/avg for an ODB field output                     |
+| `extract_xy_history`      | Extract ODB history output as XY pairs                        |
+| `export_contour_image`    | Export a contour image from an ODB                            |
+| `export_report`           | Write a concise Markdown ODB/job report                       |
 | `get_viewport_image`      | Capture a viewport screenshot as base64                       |
 | `ping`                    | Test connection (returns version info)                        |
+
+
+## Structured Simulation Workflow
+
+The recommended agent flow is:
+
+1. Use `list_templates` and `instantiate_template` to start from a known simulation family.
+2. Edit the returned JSON spec to match the user request.
+3. Call `validate_model_spec`.
+4. Call `create_or_update_model_from_spec` with `dry_run=true`.
+5. Call `create_or_update_model_from_spec` with `dry_run=false`.
+6. Call `validate_model`, then `write_input` or `submit_job_async`.
+7. Poll with `get_job_status`; if it fails, call `parse_job_diagnostics`.
+8. Use `query_odb_field`, `extract_xy_history`, `export_contour_image`, and `export_report` for post-processing.
+
+Installed templates:
+
+- `tsv_thermal_cycle`
+- `bga_thermal_cycle`
+- `uniaxial_tension`
+- `contact_indentation`
+- `heat_transfer`
+
+`execute_script` remains available as an expert escape hatch for operations not covered by structured tools.
 
 
 ## MCP Resources
@@ -208,10 +247,22 @@ Result will appear at `~/.abaqus-mcp/results/my_command.json`.
 | Type                 | Parameters                | Description                     |
 | -------------------- | ------------------------- | ------------------------------- |
 | `execute_script`     | `script` (str)            | Execute Python script in Abaqus |
+| `build_model_from_spec` | `spec`, `dry_run`       | Build or dry-run a structured model spec |
+| `validate_model`     | `model_name`              | Validate current/named model    |
+| `mesh_model`         | `model_name`, `global_size` | Mesh current/named model      |
 | `get_model_info`     | —                         | Get current model information   |
 | `list_jobs`          | —                         | List all defined jobs           |
+| `write_input`        | `job_name`                | Write input file                |
 | `submit_job`         | `job_name` (str)          | Submit and wait for a job       |
+| `submit_job_async`   | `job_name`                | Submit and return immediately   |
+| `get_job_status`     | `job_name`, `workdir`     | Read status and diagnostics     |
+| `cancel_job`         | `job_name`                | Cancel a running job            |
+| `parse_job_diagnostics` | `job_name`, `workdir`  | Parse solver log diagnostics    |
 | `get_odb_info`       | `odb_path` (str)          | Read ODB metadata               |
+| `query_odb_field`    | `odb_path`, `variable`, `step_name`, `frame`, `invariant` | Query field stats |
+| `extract_xy_history` | `odb_path`, `variable`    | Extract history output          |
+| `export_result_image` | `odb_path`, `variable`, `output_path` | Export contour image      |
+| `export_report`      | `odb_path`, `report_path` | Export Markdown report          |
 | `get_viewport_image` | `viewport_name`, `format` | Capture viewport screenshot     |
 | `ping`               | —                         | Test connection                 |
 | `stop`               | —                         | Request loop stop               |
@@ -232,6 +283,8 @@ Result will appear at `~/.abaqus-mcp/results/my_command.json`.
 │       └── mcp_control_plugin.py
 ├── commands/                  # Incoming command files
 ├── results/                   # Outgoing result files
+├── templates/                 # Parameterized simulation templates
+├── transactions/              # Spec logs and optional CAE checkpoints
 ├── scripts/                   # Temporary script files
 ├── screenshots/               # Temporary viewport captures
 ├── status.json                # Heartbeat status (updated every 2s)

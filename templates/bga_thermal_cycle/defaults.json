@@ -1,0 +1,29 @@
+{
+  "template": "BGA thermal cycle",
+  "spec": {
+    "model_name": "BGA_Thermal_Cycle",
+    "parts": [
+      {"name": "Substrate", "type": "block", "dimensions": [42.0, 42.0, 2.5], "origin": [-21.0, -21.0, 0.0]},
+      {"name": "Die", "type": "block", "dimensions": [20.0, 20.0, 2.2], "origin": [-10.0, -10.0, 4.3]}
+    ],
+    "materials": [
+      {"name": "silicon", "elastic": {"youngs_modulus": 162000.0, "poisson_ratio": 0.23}, "expansion": {"coefficient": 2.8e-6}},
+      {"name": "underfill", "elastic": {"youngs_modulus": 10000.0, "poisson_ratio": 0.333}, "expansion": {"coefficient": 2.31e-5}}
+    ],
+    "sections": [
+      {"name": "Section-Substrate", "material": "underfill", "parts": ["Substrate"]},
+      {"name": "Section-Die", "material": "silicon", "parts": ["Die"]}
+    ],
+    "steps": [
+      {"name": "THERMO", "type": "visco", "time_period": 5400.0, "initial_inc": 450.0, "max_inc": 450.0, "cetol": 0.01}
+    ],
+    "amplitudes": [
+      {"name": "Amp-thermocyc", "type": "tabular", "data": [[0.0, 0.0], [450.0, 100.0], [1350.0, 100.0], [1800.0, 0.0], [2700.0, 0.0], [3150.0, 100.0], [4050.0, 100.0], [4500.0, 0.0], [5400.0, 0.0]]}
+    ],
+    "predefined_fields": [
+      {"name": "Field-temp", "type": "temperature", "step": "THERMO", "magnitude": 1.0, "amplitude": "Amp-thermocyc"}
+    ],
+    "mesh": {"global_size": 0.8, "element_type": "C3D8R"},
+    "jobs": [{"name": "Job-BGA", "model": "BGA_Thermal_Cycle"}]
+  }
+}
