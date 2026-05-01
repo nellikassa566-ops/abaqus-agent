@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="660" viewBox="0 0 1180 660" role="img" aria-labelledby="title desc">
+  <title id="title">Finite element simulation example</title>
+  <desc id="desc">A finite element simulation style figure showing a silicon block with a copper TSV, mesh lines, stress contours and thermal cycling boundary conditions.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="topFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="100%" stop-color="#8ec5ff"/>
+    </linearGradient>
+    <linearGradient id="sideFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="56%" stop-color="#22c55e"/>
+      <stop offset="78%" stop-color="#facc15"/>
+      <stop offset="92%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+    <linearGradient id="frontFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="45%" stop-color="#38bdf8"/>
+      <stop offset="72%" stop-color="#22c55e"/>
+      <stop offset="88%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="45%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="colorbar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="18%" stop-color="#06b6d4"/>
+      <stop offset="38%" stop-color="#22c55e"/>
+      <stop offset="58%" stop-color="#facc15"/>
+      <stop offset="78%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <radialGradient id="hotSpot" cx="50%" cy="50%" r="54%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.9"/>
+      <stop offset="45%" stop-color="#f97316" stop-opacity="0.58"/>
+      <stop offset="72%" stop-color="#facc15" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e2e8f0"/>
+    </marker>
+    <style>
+      .mesh { stroke: rgba(15, 23, 42, 0.34); stroke-width: 1.1; fill: none; }
+      .mesh-light { stroke: rgba(255, 255, 255, 0.34); stroke-width: 1; fill: none; }
+      .label { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #e2e8f0; }
+      .muted { fill: #94a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1180" height="660" rx="32" fill="url(#page)"/>
+  <text x="58" y="68" class="label" font-size="31" font-weight="800">Finite Element Simulation</text>
+  <text x="58" y="102" class="label muted" font-size="16">TSV thermo-mechanical model: silicon matrix, copper via, thermal cycling and Mises stress contour.</text>
+
+  <g transform="translate(120,130)" filter="url(#shadow)">
+    <polygon id="front" points="145,135 575,78 575,430 145,505" fill="url(#frontFace)" stroke="#dbeafe" stroke-width="2.2"/>
+    <polygon id="right" points="575,78 760,170 760,505 575,430" fill="url(#sideFace)" stroke="#dbeafe" stroke-width="2.2"/>
+    <polygon id="top" points="145,135 330,36 760,170 575,78" fill="url(#topFace)" stroke="#dbeafe" stroke-width="2.2"/>
+
+    <clipPath id="clipFront">
+      <polygon points="145,135 575,78 575,430 145,505"/>
+    </clipPath>
+    <clipPath id="clipRight">
+      <polygon points="575,78 760,170 760,505 575,430"/>
+    </clipPath>
+    <clipPath id="clipTop">
+      <polygon points="145,135 330,36 760,170 575,78"/>
+    </clipPath>
+
+    <g clip-path="url(#clipFront)">
+      <g class="mesh">
+        <path d="M145 177 L575 120 M145 219 L575 162 M145 261 L575 204 M145 303 L575 246 M145 345 L575 288 M145 387 L575 330 M145 429 L575 372 M145 471 L575 414"/>
+        <path d="M189 129 L189 497 M232 124 L232 489 M275 118 L275 482 M318 112 L318 474 M361 106 L361 467 M404 101 L404 459 M447 95 L447 452 M490 89 L490 444 M533 84 L533 437"/>
+      </g>
+      <ellipse cx="372" cy="290" rx="98" ry="182" fill="url(#hotSpot)"/>
+    </g>
+
+    <g clip-path="url(#clipRight)">
+      <g class="mesh">
+        <path d="M575 120 L760 208 M575 162 L760 250 M575 204 L760 292 M575 246 L760 334 M575 288 L760 376 M575 330 L760 418 M575 372 L760 460"/>
+        <path d="M612 96 L612 445 M649 114 L649 460 M686 133 L686 475 M723 151 L723 490"/>
+      </g>
+      <ellipse cx="618" cy="290" rx="70" ry="168" fill="url(#hotSpot)"/>
+    </g>
+
+    <g clip-path="url(#clipTop)">
+      <g class="mesh-light">
+        <path d="M191 110 L622 196 M237 85 L668 210 M283 61 L714 224"/>
+        <path d="M213 148 L399 49 M281 169 L467 70 M349 190 L535 91 M417 211 L603 112 M485 232 L671 133 M553 253 L739 154"/>
+      </g>
+    </g>
+
+    <g>
+      <path d="M412 76 C452 86 482 111 481 131 L479 390 C478 415 436 428 390 416 C350 406 321 381 322 361 L324 103 C325 78 366 64 412 76 Z" fill="url(#copper)" stroke="#7c2d12" stroke-width="2.4"/>
+      <ellipse cx="403" cy="104" rx="80" ry="33" transform="rotate(14 403 104)" fill="#fbbf24" stroke="#7c2d12" stroke-width="2.4"/>
+      <ellipse cx="400" cy="389" rx="79" ry="33" transform="rotate(14 400 389)" fill="#92400e" opacity="0.78" stroke="#7c2d12" stroke-width="2.2"/>
+      <path d="M329 117 C370 137 438 152 477 129" stroke="#fed7aa" stroke-width="3" fill="none" opacity="0.75"/>
+    </g>
+
+    <path d="M318 94 C265 138 234 206 235 291 C236 401 309 466 405 468 C522 471 592 398 593 289 C594 199 556 132 488 101" stroke="#f8fafc" stroke-width="2.2" stroke-dasharray="8 7" fill="none" opacity="0.78"/>
+    <text x="362" y="64" class="label" font-size="16" font-weight="700">Cu TSV</text>
+    <text x="604" y="70" class="label" font-size="16" font-weight="700">Si matrix</text>
+
+    <g transform="translate(18,205)">
+      <rect x="0" y="0" width="78" height="250" rx="12" fill="#f8fafc" opacity="0.96"/>
+      <text x="16" y="30" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="800" fill="#0f172a">S, Mises</text>
+      <rect x="18" y="52" width="24" height="160" fill="url(#colorbar)" stroke="#0f172a" stroke-width="1"/>
+      <g font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#0f172a">
+        <text x="48" y="60">140 MPa</text>
+        <text x="48" y="94">105</text>
+        <text x="48" y="128">70</text>
+        <text x="48" y="162">35</text>
+        <text x="48" y="212">0</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(880,150)">
+    <rect x="0" y="0" width="230" height="132" rx="16" fill="#f8fafc" opacity="0.98"/>
+    <text x="22" y="38" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" font-weight="800" fill="#0f172a">Boundary setup</text>
+    <text x="22" y="70" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#334155">Thermal cycle: -40 C to 125 C</text>
+    <text x="22" y="96" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#334155">Bottom face: constrained</text>
+    <text x="22" y="120" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#334155">Output: S, E, U, CEEQ</text>
+  </g>
+
+  <g transform="translate(880,330)">
+    <rect x="0" y="0" width="230" height="182" rx="16" fill="#0b1220" stroke="#334155"/>
+    <text x="22" y="40" class="label" font-size="18" font-weight="800">Agent result</text>
+    <text x="22" y="76" class="label muted" font-size="14">max Mises: 140 MPa</text>
+    <text x="22" y="104" class="label muted" font-size="14">critical zone: Cu/Si interface</text>
+    <text x="22" y="132" class="label muted" font-size="14">frame: 450 s heating peak</text>
+    <text x="22" y="160" class="label muted" font-size="14">mesh: refined near TSV wall</text>
+  </g>
+
+  <path d="M858 290 C820 272 795 250 778 220" stroke="#e2e8f0" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M858 418 C805 395 755 365 707 330" stroke="#e2e8f0" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <text x="60" y="615" class="label muted" font-size="13">Concept render for README: structured Abaqus model, mesh, thermal cycle and ODB contour visualization.</text>
+</svg>

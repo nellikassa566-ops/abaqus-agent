@@ -21,6 +21,10 @@
 
 ![ODB contour example](docs/images/odb-smoke-mises.png)
 
+下面是一张有限元模拟示意图，展示 TSV 热循环模型中的硅基体、铜通孔、局部网格加密、热循环边界和 Mises 应力集中区域。
+
+![Finite element simulation example](docs/images/finite-element-simulation.svg)
+
 ## 核心架构
 
 `abaqus-agent` 使用文件式 IPC，不需要 Abaqus 开 socket 服务，因此对不同 Abaqus/CAE 版本更稳。
