@@ -21,9 +21,9 @@
 
 ![ODB contour example](docs/images/odb-smoke-mises.png)
 
-下面是一张有限元模拟示意图，展示 TSV 热循环模型中的硅基体、铜通孔、局部网格加密、热循环边界和 Mises 应力集中区域。
+下面是 BGA 热循环模型求解后，从同一个 ODB 的 5400 s 结果帧导出的焊球 CEEQ 云图。
 
-![Finite element simulation example](docs/images/finite-element-simulation.svg)
+![BGA solder CEEQ at 5400 s](docs/images/bga-solder-ceeq-5400-refined.png)
 
 ## 核心架构
 
