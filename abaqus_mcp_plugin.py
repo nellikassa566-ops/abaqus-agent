@@ -34,9 +34,10 @@ except ImportError:
 
 def _resolve_mcp_home():
     """Resolve MCP home with explicit override support."""
-    env_home = os.environ.get('ABAQUS_MCP_HOME', '').strip()
-    if env_home:
-        return os.path.abspath(os.path.expanduser(env_home))
+    for env_name in ('ABAQUS_AGENT_HOME', 'ABAQUS_MCP_HOME'):
+        env_home = os.environ.get(env_name, '').strip()
+        if env_home:
+            return os.path.abspath(os.path.expanduser(env_home))
     try:
         this_file = os.path.abspath(__file__)
         script_dir = os.path.dirname(this_file)
@@ -44,7 +45,12 @@ def _resolve_mcp_home():
             return script_dir
     except Exception:
         pass
-    return os.path.join(os.path.expanduser('~'), '.abaqus-mcp')
+    home = os.path.expanduser('~')
+    for folder_name in ('.abaqus-agent', '.abaqus-mcp'):
+        candidate = os.path.join(home, folder_name)
+        if os.path.exists(candidate):
+            return candidate
+    return os.path.join(home, '.abaqus-agent')
 
 
 MCP_HOME = _resolve_mcp_home()
@@ -1523,7 +1529,7 @@ def mcp_loop(sleep_interval=0.1):
 
     print('MCP: Listening for commands...')
     print('MCP: To stop, run in PowerShell:')
-    print('     echo $null > "$env:USERPROFILE\\.abaqus-mcp\\stop.flag"')
+    print('     echo $null > "' + STOP_FILE + '"')
     print('')
 
     write_status('running', 'Polling active (blocking)')

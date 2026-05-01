@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "abaqus-mcp-server": {
+    "abaqus-agent": {
       "command": "python",
-      "args": ["C:/Users/YourUsername/.abaqus-mcp/mcp_server.py"]
+      "args": ["C:/Users/YourUsername/.abaqus-agent/mcp_server.py"]
     }
   }
 }

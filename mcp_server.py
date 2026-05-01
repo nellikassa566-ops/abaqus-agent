@@ -23,13 +23,31 @@ from abaqus_mcp_tools import (
     validate_model_spec as _validate_model_spec,
 )
 
-MCP_HOME = Path(os.environ.get('ABAQUS_MCP_HOME', Path.home() / '.abaqus-mcp'))
+def _resolve_mcp_home() -> Path:
+    for env_name in ('ABAQUS_AGENT_HOME', 'ABAQUS_MCP_HOME'):
+        env_home = os.environ.get(env_name)
+        if env_home:
+            return Path(env_home).expanduser().resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    if (script_dir / 'stop_mcp.py').exists():
+        return script_dir
+
+    for folder_name in ('.abaqus-agent', '.abaqus-mcp'):
+        candidate = Path.home() / folder_name
+        if candidate.exists():
+            return candidate
+
+    return Path.home() / '.abaqus-agent'
+
+
+MCP_HOME = _resolve_mcp_home()
 COMMANDS_DIR = MCP_HOME / 'commands'
 RESULTS_DIR = MCP_HOME / 'results'
 STATUS_FILE = MCP_HOME / 'status.json'
 TIMEOUT = 30.0
 
-mcp = FastMCP("abaqus-mcp-server")
+mcp = FastMCP("abaqus-agent")
 
 
 # ---------------------------------------------------------------------------
